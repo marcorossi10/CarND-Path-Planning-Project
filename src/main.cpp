@@ -53,7 +53,9 @@ int main()
     map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&map_waypoints_x, &map_waypoints_y, &map_waypoints_s,
+  double ref_vel = 0; //[MpH]
+  int lane = 1;
+  h.onMessage([&ref_vel, &lane, &map_waypoints_x, &map_waypoints_y, &map_waypoints_s,
                &map_waypoints_dx, &map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                                                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -103,23 +105,50 @@ int main()
            *   sequentially every .02 seconds
            */
 
-          // double dist_inc = 0.3;
-          // for (int i = 0; i < 50; ++i)
-          // {
-          //   double next_s{car_s + (i + 1) * dist_inc};
-          //   double next_d = 10;
-          //   vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-          //   next_x_vals.push_back(xy[0]);
-          //   next_y_vals.push_back(xy[1]);
-          // }
-
-          int lane = 1;
-          double ref_vel{49.5}; //[MpH]
           vector<double> ptsx;
           vector<double> ptsy;
           double ref_x{car_x};
           double ref_y{car_y};
           double ref_yaw{deg2rad(car_yaw)};
+
+          //Logic to handle other vehicles in the road
+          if (previous_path_x.size() > 0)
+          {
+            car_s = end_path_s;
+          }
+          bool too_close{false};
+
+          for (int i = 0; i < sensor_fusion.size(); i++)
+          {
+            float d = sensor_fusion[i][6]; //Frenet lateral distance of other obstacles
+            //car in my lane
+            if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
+            {
+              double vx = sensor_fusion[i][3];
+              double vy = sensor_fusion[i][4];
+              double check_speed = sqrt(vx * vx + vy + vy);
+              double check_car_s = sensor_fusion[i][5];
+
+              check_car_s += ((double)previous_path_x.size() * 0.02 * check_speed);
+              if ((check_car_s > car_s) && (check_car_s - car_s) < 30)
+              {
+                too_close = true;
+                if (lane > 0)
+                {
+                  lane = 0;
+                }
+              }
+            }
+          }
+
+          if (too_close)
+          {
+            ref_vel = ref_vel - 0.224;
+          }
+          else if (ref_vel < 49.5)
+          {
+            ref_vel = ref_vel + 0.224;
+          }
 
           //Here I want to find the last couple of points that the car was following to genereate a smooth transition
           //First initialization step
@@ -141,7 +170,7 @@ int main()
 
             double ref_x_prev{previous_path_x[previous_path_x.size() - 2]};
             double ref_y_prev{previous_path_y[previous_path_y.size() - 2]};
-            ref_yaw = (ref_y - ref_y_prev) / (ref_x - ref_x_prev);
+            ref_yaw = atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
 
             ptsx.push_back(ref_x_prev);
             ptsx.push_back(ref_x);
@@ -187,13 +216,43 @@ int main()
             next_y_vals.push_back(previous_path_y[i]);
           }
 
+          //Now we break the spline into closer points, to specify the speed we want to travel
+          double target_x{30};
+          double target_y{s(target_x)};
+          //Linearization to find the distance from 0 to 30
+          double target_dist = sqrt((target_x * target_x) + (target_y * target_y));
+
+          double x_add_on = 0;
+
+          //Fill the rest of the planner
+          for (int i = 0; i <= 50 - previous_path_x.size(); i++)
+          {
+            double N = (target_dist / (0.02 * ref_vel / 2.24));
+            double x_point = x_add_on + target_x / N;
+            double y_point = s(x_point);
+
+            x_add_on = x_point;
+
+            double x_ref = x_point;
+            double y_ref = y_point;
+
+            //Rotation back to the previous reference system
+            x_point = (x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw));
+            y_point = (x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw));
+
+            x_point += ref_x;
+            y_point += ref_y;
+
+            next_x_vals.push_back(x_point);
+            next_y_vals.push_back(y_point);
+          }
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
 
           auto msg = "42[\"control\"," + msgJson.dump() + "]";
 
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-        } // end "telemetry" if
+        } // end "telemetry" ifprevious_path_x.size()
       }
       else
       {
