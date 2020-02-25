@@ -117,12 +117,34 @@ int main()
             car_s = end_path_s;
           }
           bool too_close{false};
+          bool car_on_left_lane{false};
 
           for (int i = 0; i < sensor_fusion.size(); i++)
           {
             float d = sensor_fusion[i][6]; //Frenet lateral distance of other obstacles
+
+            //car in the left lane
+            if (d < (2 + 4 * lane - 2))
+            {
+              double vx = sensor_fusion[i][3];
+              double vy = sensor_fusion[i][4];
+              double check_speed = sqrt(vx * vx + vy + vy);
+              double check_car_s = sensor_fusion[i][5];
+
+              check_car_s += ((double)previous_path_x.size() * 0.02 * check_speed);
+              if (abs(check_car_s - car_s) < 50)
+              {
+                car_on_left_lane = true;
+                std::cout << "Car "<< i << " is on the left lane" << std::endl;
+              }
+              else
+              {
+                std::cout << "Nobody on the left lane!" << std::endl;
+              }
+            }
+
             //car in my lane
-            if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
+           if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
             {
               double vx = sensor_fusion[i][3];
               double vy = sensor_fusion[i][4];
@@ -133,7 +155,8 @@ int main()
               if ((check_car_s > car_s) && (check_car_s - car_s) < 30)
               {
                 too_close = true;
-                if (lane > 0)
+                std::cout << "Too close? "<< too_close << std::endl;
+                if (lane > 0 && (car_on_left_lane==false))
                 {
                   lane = 0;
                 }
