@@ -117,32 +117,74 @@ int main()
             car_s = end_path_s;
           }
           bool too_close{false};
+          bool car_on_left_lane{false};
 
           for (int i = 0; i < sensor_fusion.size(); i++)
           {
             float d = sensor_fusion[i][6]; //Frenet lateral distance of other obstacles
+            double vx = sensor_fusion[i][3];
+            double vy = sensor_fusion[i][4];
+            double check_speed = sqrt(vx * vx + vy + vy);
+            double check_car_s = sensor_fusion[i][5];
+
+            check_car_s += ((double)previous_path_x.size() * 0.02 * check_speed);
+            //car in the left lane close to me
+            if ((car_d - d) > 3 && abs(check_car_s - car_s) < 30 && d > 0)
+            {
+              // double vx = sensor_fusion[i][3];
+              // double vy = sensor_fusion[i][4];
+              // double check_speed = sqrt(vx * vx + vy + vy);
+              car_on_left_lane = true;
+              std::cout << "Car " << i << " is on the left lane"
+                        << " at this s: " << check_car_s << std::endl;
+              std::cout << "Ego is at s: " << car_s << std::endl;
+            }
+            // bool bool1{(car_d - d) > 3};
+            // bool bool2{abs(check_car_s - car_s) < 30};
+            // bool bool3{d > 0};
+            // std::cout << "Car ID == " << i << std::endl;
+            // std::cout << "(car_d - d) > 3 == " << bool1 << std::endl;
+            // std::cout << "abs(check_car_s - car_s) == " << bool2 << std::endl;
+            // std::cout << "d > 0 == " << bool3 << std::endl;
+
+            //car in the right lane close to me
+            // if ((car_d - d) > 3.5 && abs(check_car_s - car_s) < 30)
+            // {
+            //   double vx = sensor_fusion[i][3];
+            //   double vy = sensor_fusion[i][4];
+            //   double check_speed = sqrt(vx * vx + vy + vy);
+            //   car_on_left_lane = true;
+            //   std::cout << "Car " << i << " is on the left lane" << std::endl;
+            //   std::cout << "Ego is at " << car_s << std::endl;
+            // }
+
             //car in my lane
             if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
             {
-              double vx = sensor_fusion[i][3];
-              double vy = sensor_fusion[i][4];
-              double check_speed = sqrt(vx * vx + vy + vy);
-              double check_car_s = sensor_fusion[i][5];
-
-              check_car_s += ((double)previous_path_x.size() * 0.02 * check_speed);
               if ((check_car_s > car_s) && (check_car_s - car_s) < 30)
               {
                 too_close = true;
-                if (lane > 0)
-                {
-                  lane = 0;
-                }
+                // std::cout << "Too close? " << too_close << std::endl;
+                // if (lane > 0)
+                // {
+                //   std::cout << "Change lane!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << car_on_left_lane << std::endl;
+                //   lane = lane - 1;
+                // }
+                // if (lane > 0 && (car_on_right_lane == false))
+                // {
+                //   lane = lane + 1;
+                // }
               }
             }
           }
 
-          if (too_close)
+          if (too_close && lane > 0 && (car_on_left_lane == false) && car_speed > ref_vel - ref_vel * 0.1)
           {
+            lane = lane - 1;
+          }
+          else if (too_close)
+          {
+            std::cout << "Too close? " << too_close << " and Ego is at s: " << car_s << std::endl;
             ref_vel = ref_vel - 0.224;
           }
           else if (ref_vel < 49.5)
