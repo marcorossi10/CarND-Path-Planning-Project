@@ -111,8 +111,10 @@ int main()
           double ref_y{car_y};
           double ref_yaw{deg2rad(car_yaw)};
 
+          int prev_size = previous_path_x.size();
+
           //Logic to handle other vehicles in the road
-          if (previous_path_x.size() > 0)
+          if (prev_size > 0)
           {
             car_s = end_path_s;
           }
@@ -124,28 +126,15 @@ int main()
             float d = sensor_fusion[i][6]; //Frenet lateral distance of other obstacles
             double vx = sensor_fusion[i][3];
             double vy = sensor_fusion[i][4];
-            double check_speed = sqrt(vx * vx + vy + vy);
+            double check_speed = sqrt(vx * vx + vy * vy);
             double check_car_s = sensor_fusion[i][5];
 
-            check_car_s += ((double)previous_path_x.size() * 0.02 * check_speed);
+            check_car_s += ((double)prev_size * 0.02 * check_speed);
             //car in the left lane close to me
             if ((car_d - d) > 3 && abs(check_car_s - car_s) < 30 && d > 0)
             {
-              // double vx = sensor_fusion[i][3];
-              // double vy = sensor_fusion[i][4];
-              // double check_speed = sqrt(vx * vx + vy + vy);
               car_on_left_lane = true;
-              // std::cout << "Car " << i << " is on the left lane"
-              //           << " at this s: " << check_car_s << std::endl;
-              // std::cout << "Ego is at s: " << car_s << std::endl;
             }
-            // bool bool1{(car_d - d) > 3};
-            // bool bool2{abs(check_car_s - car_s) < 30};
-            // bool bool3{d > 0};
-            // std::cout << "Car ID == " << i << std::endl;
-            // std::cout << "(car_d - d) > 3 == " << bool1 << std::endl;
-            // std::cout << "abs(check_car_s - car_s) == " << bool2 << std::endl;
-            // std::cout << "d > 0 == " << bool3 << std::endl;
 
             //car in the right lane close to me
             // if ((car_d - d) > 3.5 && abs(check_car_s - car_s) < 30)
@@ -161,26 +150,11 @@ int main()
             //car in my lane
             if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
             {
-              std::cout << "Car " << i << " is on my lane"
-                        << " at this s: " << check_car_s << std::endl;
-              bool bool1{(check_car_s > car_s)};
-              bool bool2{(check_car_s - car_s) < 30};
-              if ((check_car_s > car_s) && abs(check_car_s - car_s) < 30)
+              //car is in front of me and close
+              if ((check_car_s > car_s) && (check_car_s - car_s < 30))
               {
                 too_close = true;
-                // std::cout << "Too close? " << too_close << std::endl;
-                // if (lane > 0)
-                // {
-                //   std::cout << "Change lane!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << car_on_left_lane << std::endl;
-                //   lane = lane - 1;
-                // }
-                // if (lane > 0 && (car_on_right_lane == false))
-                // {
-                //   lane = lane + 1;
-                // }
               }
-              // std::cout << "(check_car_s > car_s) == " << bool1 << std::endl;
-              // std::cout << "(check_car_s - car_s) < 30 == " << bool2 << std::endl;
             }
           }
 
@@ -190,7 +164,6 @@ int main()
           }
           else if (too_close)
           {
-            std::cout << "Too close? " << too_close << " and Ego is at s: " << car_s << std::endl;
             ref_vel = ref_vel - 0.224;
           }
           else if (ref_vel < 49.5)
@@ -200,7 +173,7 @@ int main()
 
           //Here I want to find the last couple of points that the car was following to genereate a smooth transition
           //First initialization step
-          if (previous_path_x.size() < 2)
+          if (prev_size < 2)
           {
             double prev_car_x{car_x - cos(car_yaw)};
             double prev_car_y{car_y - sin(car_yaw)};
@@ -213,11 +186,11 @@ int main()
           //All other cases
           else
           {
-            ref_x = previous_path_x[previous_path_x.size() - 1];
-            ref_y = previous_path_y[previous_path_y.size() - 1];
+            ref_x = previous_path_x[prev_size - 1];
+            ref_y = previous_path_y[prev_size - 1];
 
-            double ref_x_prev{previous_path_x[previous_path_x.size() - 2]};
-            double ref_y_prev{previous_path_y[previous_path_y.size() - 2]};
+            double ref_x_prev{previous_path_x[prev_size - 2]};
+            double ref_y_prev{previous_path_y[prev_size - 2]};
             ref_yaw = atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
 
             ptsx.push_back(ref_x_prev);
@@ -258,7 +231,7 @@ int main()
 
           //First, we want to feed the next_vals vectors with the part of the path
           //that was not sent to the simulator during the previous iteration
-          for (int i = 0; i < previous_path_x.size(); i++)
+          for (int i = 0; i < prev_size; i++)
           {
             next_x_vals.push_back(previous_path_x[i]);
             next_y_vals.push_back(previous_path_y[i]);
@@ -273,7 +246,7 @@ int main()
           double x_add_on = 0;
 
           //Fill the rest of the planner
-          for (int i = 0; i <= 50 - previous_path_x.size(); i++)
+          for (int i = 0; i <= 50 - prev_size; i++)
           {
             double N = (target_dist / (0.02 * ref_vel / 2.24));
             double x_point = x_add_on + target_x / N;
