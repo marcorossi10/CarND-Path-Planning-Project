@@ -5,6 +5,25 @@ Self-Driving Car Engineer Nanodegree Program
 
 ![](./data/record.gif)
 
+
+### Goals of the project
+In this project the goal is to safely navigate around a virtual highway with other traffic (randomly generated) that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
+
+### Reflections
+* The car is generally able to drive for long period of time without accidents, a run of more than 15 miles was achieved.
+Some rare incidents were still found during the final test phase. They were mainly due to hazardous cut-in made by the traffic objects.
+Such behaviours were not considered relevant for this project since to face this kind of situation an emergency manoeuvre has to be computed and this would lead anyway to lateral/longitudinal jerk violations.
+
+* A more frequent incident was instead faced while performing an overtake and with a fast incoming obstacle behind the ego-vehicle.
+To solve this issue a check on the ego-vehicle current speed was made, in order to start the overtake only if the speed was close to the maximum allowed speed (line 157 and 162 of main.cpp).
+
+* The code is commented in all its step to facilitate the reading.
+
+* Possible improvements for this project are:
+    1) Take into consideration in the algorithm the speed of objects.
+    2) Use a class to implement the trajectory planning.
+    3) Consider vehicle dynamic (such as bicycle model) in generating the path.
+
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).
 
@@ -12,9 +31,6 @@ To run the simulator on Mac/Linux, first make the binary file executable with th
 ```shell
 sudo chmod u+x {simulator_file_name}
 ```
-
-### Goals
-In this project the goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
 
 #### The map of the highway is in data/highway_map.txt
 Each waypoint in the list contains  [x,y,s,dx,dy] values. x and y are the waypoint's map coordinate position, the s value is the distance along the road to get to that waypoint in meters, the dx and dy values define the unit normal vector pointing outward of the highway loop.
