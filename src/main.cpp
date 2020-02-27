@@ -120,52 +120,55 @@ int main()
           }
           bool too_close{false};
           bool car_on_left_lane{false};
+          bool car_on_right_lane{false};
 
           for (int i = 0; i < sensor_fusion.size(); i++)
           {
-            float d = sensor_fusion[i][6]; //Frenet lateral distance of other obstacles
+            float d_obst = sensor_fusion[i][6]; //Frenet lateral distance of other obstacles
             double vx = sensor_fusion[i][3];
             double vy = sensor_fusion[i][4];
             double check_speed = sqrt(vx * vx + vy * vy);
-            double check_car_s = sensor_fusion[i][5];
+            double s_obst = sensor_fusion[i][5];
+            s_obst += ((double)prev_size * 0.02 * check_speed);
 
-            check_car_s += ((double)prev_size * 0.02 * check_speed);
             //car in the left lane close to me
-            if ((car_d - d) > 3 && abs(check_car_s - car_s) < 30 && d > 0)
+            if ((d_obst < 4 * lane) && (d_obst > 4 * lane - 4) && abs(s_obst - car_s) < 30)
             {
               car_on_left_lane = true;
             }
-
             //car in the right lane close to me
-            // if ((car_d - d) > 3.5 && abs(check_car_s - car_s) < 30)
-            // {
-            //   double vx = sensor_fusion[i][3];
-            //   double vy = sensor_fusion[i][4];
-            //   double check_speed = sqrt(vx * vx + vy + vy);
-            //   car_on_left_lane = true;
-            //   std::cout << "Car " << i << " is on the left lane" << std::endl;
-            //   std::cout << "Ego is at " << car_s << std::endl;
-            // }
-
+            if ((d_obst < 4 * lane + 8) && (d_obst > 4 * lane + 4) && abs(s_obst - car_s) < 30)
+            {
+              car_on_right_lane = true;
+            }
             //car in my lane
-            if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
+            if ((d_obst < (4 * lane + 4)) && (d_obst > (4 * lane)))
             {
               //car is in front of me and close
-              if ((check_car_s > car_s) && (check_car_s - car_s < 30))
+              if ((s_obst > car_s) && (s_obst - car_s < 30))
               {
                 too_close = true;
               }
             }
           }
 
-          if (too_close && lane > 0 && (car_on_left_lane == false) && car_speed > ref_vel - ref_vel * 0.1)
+          //To avoid collision with fast incoming obstacle I want to overtake only if I have a sufficient speed
+          //Change lane to the left
+          if (too_close && lane > 0 && (car_on_left_lane == false) && car_speed > (ref_vel - ref_vel * 0.8))
           {
             lane = lane - 1;
           }
+          //Change lane to the left
+          else if (too_close && lane < 2 && (car_on_right_lane == false) && car_speed > (ref_vel - ref_vel * 0.8))
+          {
+            lane = lane + 1;
+          }
+          //Slow down behind a vehicle
           else if (too_close)
           {
             ref_vel = ref_vel - 0.224;
           }
+          //Accelerate
           else if (ref_vel < 49.5)
           {
             ref_vel = ref_vel + 0.224;
