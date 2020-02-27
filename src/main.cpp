@@ -135,9 +135,9 @@ int main()
               // double vy = sensor_fusion[i][4];
               // double check_speed = sqrt(vx * vx + vy + vy);
               car_on_left_lane = true;
-              std::cout << "Car " << i << " is on the left lane"
-                        << " at this s: " << check_car_s << std::endl;
-              std::cout << "Ego is at s: " << car_s << std::endl;
+              // std::cout << "Car " << i << " is on the left lane"
+              //           << " at this s: " << check_car_s << std::endl;
+              // std::cout << "Ego is at s: " << car_s << std::endl;
             }
             // bool bool1{(car_d - d) > 3};
             // bool bool2{abs(check_car_s - car_s) < 30};
@@ -161,7 +161,11 @@ int main()
             //car in my lane
             if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2))
             {
-              if ((check_car_s > car_s) && (check_car_s - car_s) < 30)
+              std::cout << "Car " << i << " is on my lane"
+                        << " at this s: " << check_car_s << std::endl;
+              bool bool1{(check_car_s > car_s)};
+              bool bool2{(check_car_s - car_s) < 30};
+              if ((check_car_s > car_s) && abs(check_car_s - car_s) < 30)
               {
                 too_close = true;
                 // std::cout << "Too close? " << too_close << std::endl;
@@ -175,6 +179,8 @@ int main()
                 //   lane = lane + 1;
                 // }
               }
+              // std::cout << "(check_car_s > car_s) == " << bool1 << std::endl;
+              // std::cout << "(check_car_s - car_s) < 30 == " << bool2 << std::endl;
             }
           }
 
